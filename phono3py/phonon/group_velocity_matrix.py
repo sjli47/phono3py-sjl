@@ -1,4 +1,5 @@
-# Copyright (C) 2013 Atsushi Togo
+"""Calculate group velocity matrix."""
+# Copyright (C) 2021 Atsushi Togo
 # All rights reserved.
 #
 # This file is part of phonopy.
@@ -38,12 +39,17 @@ from phonopy.harmonic.force_constants import similarity_transformation
 from phonopy.phonon.degeneracy import degenerate_sets
 from phonopy.phonon.group_velocity import GroupVelocity
 
-def get_group_velocity_matrices(q,  # q-points
+
+def get_group_velocity_matrices(q,
                                 dynamical_matrix,
-                                q_length=None,  # finite distance in q
+                                q_length=None,
                                 symmetry=None,
                                 frequency_factor_to_THz=VaspToTHz):
-    """Returns group velocity matrices at a q-points."""
+    """Return group velocity matrices at a q-points.
+
+    See details of parameters at `GroupVelocityMatrix`.
+
+    """
     gv = GroupVelocityMatrix(dynamical_matrix,
                              q_length=q_length,
                              symmetry=symmetry,
@@ -52,9 +58,8 @@ def get_group_velocity_matrices(q,  # q-points
     return gv.group_velocities[0]
 
 
-
 class GroupVelocityMatrix(GroupVelocity):
-    """Class to calculate group velocities matricies of phonons
+    """Class to calculate group velocities matricies of phonons.
 
      v_qjj' = 1/(2*sqrt(omega_qj*omega_qj')) * <e(q,j)|dD/dq|e(q,j')>
 
@@ -72,6 +77,11 @@ class GroupVelocityMatrix(GroupVelocity):
                  symmetry=None,
                  frequency_factor_to_THz=VaspToTHz,
                  cutoff_frequency=1e-4):
+        """Init method.
+
+        See details of parameters at phonopy `GroupVelocity` class.
+
+        """
         self._dynmat = None
         self._reciprocal_lattice = None
         self._q_length = None
@@ -95,7 +105,7 @@ class GroupVelocityMatrix(GroupVelocity):
         self._dtype_complex = "c%d" % (np.dtype('double').itemsize * 2)
 
     def run(self, q_points, perturbation=None):
-        """Group velocities matrices are computed at q-points.
+        """Run group velocity matrix calculate at q-points.
 
         Calculated group velocities are stored in
         self._group_velocity_matrices.
@@ -108,7 +118,6 @@ class GroupVelocityMatrix(GroupVelocity):
             Direction in fractional coordinates of reciprocal space.
 
         """
-
         self._q_points = q_points
         self._perturbation = perturbation
         if perturbation is None:
@@ -126,6 +135,7 @@ class GroupVelocityMatrix(GroupVelocity):
 
     @property
     def group_velocity_matrices(self):
+        """Return group velocity matrices."""
         return self._group_velocity_matrices
 
     def _calculate_group_velocity_matrix_at_q(self, q):
@@ -151,13 +161,13 @@ class GroupVelocityMatrix(GroupVelocity):
                 freqs[i] = 0
         freqs = np.diag(freqs)
 
-        rot_eigvecs = np.dot(rot_eigvecs,freqs)
+        rot_eigvecs = np.dot(rot_eigvecs, freqs)
 
         gvm = []
 
         for ddm in ddms[1:]:
             ddm = ddm*(self._factor ** 2)
-            gvm.append(np.dot(rot_eigvecs.T.conj(), np.dot(ddm,rot_eigvecs)))
+            gvm.append(np.dot(rot_eigvecs.T.conj(), np.dot(ddm, rot_eigvecs)))
 
         if self._perturbation is None:
             if self._symmetry is None:
@@ -169,13 +179,14 @@ class GroupVelocityMatrix(GroupVelocity):
 
         return gvm
 
-
     def _symmetrize_group_velocity_matrix(self, gv, q):
-        """Symmetrize obtained group velocity matrices using:
-                 -  site symmetries
-                 -  band hermicity
-        """
+        """Symmetrize obtained group velocity matrices.
 
+        The following symmetries are applied:
+            1. site symmetries
+            2. band hermicity
+
+        """
         # site symmetries
         rotations = []
         for r in self._symmetry.reciprocal_operations:
@@ -187,16 +198,16 @@ class GroupVelocityMatrix(GroupVelocity):
         gv_sym = np.zeros_like(gv)
         for r in rotations:
             r_cart = similarity_transformation(self._reciprocal_lattice, r)
-            gv_sym += np.einsum('ij,jkl->ikl',r_cart,gv)
+            gv_sym += np.einsum('ij,jkl->ikl', r_cart, gv)
         gv_sym = gv_sym / len(rotations)
 
         # band hermicity
-        gv_sym = (gv_sym + gv_sym.transpose(0, 2 ,1).conj()) / 2
+        gv_sym = (gv_sym + gv_sym.transpose(0, 2, 1).conj()) / 2
 
         return gv_sym
 
     def _rot_eigsets(self, ddms, eigsets):
-        """Treat degeneracy
+        """Treat degeneracy.
 
         Eigenvectors of degenerates bands in eigsets are rotated to make
         the velocity analytical in a specified direction (self._directions[0]).
@@ -208,7 +219,6 @@ class GroupVelocityMatrix(GroupVelocity):
             List of phonon eigenvectors of degenerate bands.
 
         """
-
         eigvals, eigvecs = np.linalg.eigh(
             np.dot(eigsets.T.conj(), np.dot(ddms[0], eigsets)))
 
