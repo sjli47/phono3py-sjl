@@ -224,6 +224,8 @@ wrong python libraries can be imported.
    % pip install -e .
    % cd ../phono3py
    % git checkout develop
+   % echo "[phono3py]" > site.cfg
+   % echo "extra_compile_args = -fopenmp" >> site.cfg
    % python setup.py build
    % pip install -e .
    ```
