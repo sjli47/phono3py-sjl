@@ -148,6 +148,7 @@ class Interaction:
         self._triplets_map_at_q = None
         self._ir_map_at_q = None
         self._interaction_strength = None
+        self._recip_interaction_strength = None # SJLedit
         self._g_zero = None
 
         self._phonon_done = None
@@ -181,8 +182,12 @@ class Interaction:
         self._interaction_strength = np.empty(
             (num_triplets, len(self._band_indices), num_band, num_band), dtype="double"
         )
+        self._recip_interaction_strength = np.empty( # SJLedit
+            (num_triplets, len(self._band_indices), num_band, num_band), dtype="double"
+        )
         if self._constant_averaged_interaction is None:
             self._interaction_strength[:] = 0
+            self._recip_interaction_strength[:] = 0 # SJLedit
             if lang == "C":
                 self._run_c(g_zero)
             else:
@@ -205,6 +210,21 @@ class Interaction:
 
         """
         return self._interaction_strength
+
+
+    @property
+    def recip_interaction_strength(self):
+        """Return reciprocal space ph-ph interaction strength.
+
+        Returns
+        -------
+        ndarray
+            shape=(num_ir_grid_points, num_specified_band, num_band, num_band),
+            dtype='double', order='C'
+        SJLedit
+        """
+        return self._recip_interaction_strength
+
 
     def get_interaction_strength(self):
         """Return ph-ph interaction strength."""
@@ -783,6 +803,19 @@ class Interaction:
         self._interaction_strength = None
         self._g_zero = None
 
+
+    def delete_recip_interaction_strength(self):
+        """Delete large arrays loosely.
+
+        Memory deallocation would rely on garbage collector of python.
+        So this may not work as expected.
+        SJLedit
+        """
+        self._recip_interaction_strength = None
+        self._g_zero = None
+
+
+
     def _set_fc3(self, fc3):
         if (
             type(fc3) == np.ndarray
@@ -866,6 +899,9 @@ class Interaction:
         )
 
         for i, grid_triplet in enumerate(self._triplets_at_q):
+            print("interaction.py _run_py for i + 1 {0}, grid_triplet {1}".format(i + 1, grid_triplet))
+            print("i + 1 / len(self.triplets_at_q)")
+            print("{0} / {1}".format(i + 1, len(self._triplets_at_q)))
             print("%d / %d" % (i + 1, len(self._triplets_at_q)))
             r2r.run(self._bz_grid.addresses[grid_triplet])
             fc3_reciprocal = r2r.get_fc3_reciprocal()
@@ -875,6 +911,21 @@ class Interaction:
             self._interaction_strength[i] = (
                 np.abs(r2n.get_reciprocal_to_normal()) ** 2 * self._unit_conversion
             )
+            self._recip_interaction_strength[i] = fc3_reciprocal # SJLedit 
+
+    def _write_dat(self):
+        """
+        Want to print:
+            i
+            grid_triplet
+            fc3_reciprocal
+            self._frequencies
+            self._eigenvectors
+            fc3_reciprocal
+            r2n.get_recip_to_norm
+            self.unit_conversion
+        """
+        pass
 
     def _run_phonon_solver_py(self, grid_point):
         run_phonon_solver_py(

@@ -43,7 +43,7 @@ from phonopy.phonon.group_velocity import GroupVelocity
 from phonopy.phonon.thermal_properties import mode_cv as get_mode_cv
 from phonopy.units import EV, Angstrom, THz, THzToEv
 
-from phono3py.file_IO import write_pp_to_hdf5
+from phono3py.file_IO import write_pp_to_hdf5, write_recip_pp_to_hdf5
 from phono3py.other.isotope import Isotope
 from phono3py.phonon3.interaction import Interaction
 from phono3py.phonon3.triplets import get_all_triplets
@@ -809,6 +809,20 @@ def write_pp(
     write_pp_to_hdf5(
         mesh,
         pp=pp.interaction_strength,
+        g_zero=pp.zero_value_positions,
+        grid_point=grid_point,
+        triplet=triplets,
+        weight=weights,
+        triplet_all=all_triplets,
+        sigma=sigmas[-1],
+        sigma_cutoff=sigma_cutoff,
+        filename=filename,
+        compression=compression,
+    )
+
+    write_recip_pp_to_hdf5(
+        mesh,
+        pp=pp.recip_interaction_strength,
         g_zero=pp.zero_value_positions,
         grid_point=grid_point,
         triplet=triplets,

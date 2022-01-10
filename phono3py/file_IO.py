@@ -1229,6 +1229,96 @@ def write_pp_to_hdf5(
         return full_filename
 
 
+def write_recip_pp_to_hdf5(
+    mesh,
+    pp=None,
+    g_zero=None,
+    grid_point=None,
+    triplet=None,
+    weight=None,
+    triplet_map=None,
+    triplet_all=None,
+    sigma=None,
+    sigma_cutoff=None,
+    filename=None,
+    verbose=True,
+    check_consistency=False,
+    compression="gzip",
+):
+    """Write reciprocal space ph-ph interaction strength in its hdf5 file."""
+    suffix = _get_filename_suffix(
+        mesh,
+        grid_point=grid_point,
+        sigma=sigma,
+        sigma_cutoff=sigma_cutoff,
+        filename=filename,
+    )
+    full_filename = "recip-pp" + suffix + ".hdf5"
+
+    with h5py.File(full_filename, "w") as w:
+        w.create_dataset("version", data=np.string_(__version__))
+        if pp is not None:
+            if g_zero is None:
+                w.create_dataset("pp", data=pp, compression=compression)
+                if triplet is not None:
+                    w.create_dataset("triplet", data=triplet, compression=compression)
+                if weight is not None:
+                    w.create_dataset("weight", data=weight, compression=compression)
+                if triplet_map is not None:
+                    w.create_dataset(
+                        "triplet_map", data=triplet_map, compression=compression
+                    )
+                if triplet_all is not None:
+                    w.create_dataset(
+                        "triplet_all", data=triplet_all, compression=compression
+                    )
+            else:
+                x = g_zero.ravel()
+                nonzero_pp = np.array(pp.ravel()[x == 0], dtype="double")
+                bytelen = len(x) // 8
+                remlen = len(x) % 8
+                y = x[: bytelen * 8].reshape(-1, 8)
+                z = np.packbits(y)
+                if remlen != 0:
+                    z_rem = np.packbits(x[bytelen * 8 :])
+
+                # No compression for pp because already almost random.
+                w.create_dataset("nonzero_pp", data=nonzero_pp, compression=None)
+                w.create_dataset("pp_shape", data=pp.shape, compression=compression)
+                w.create_dataset("g_zero_bits", data=z, compression=compression)
+                if remlen != 0:
+                    w.create_dataset("g_zero_bits_reminder", data=z_rem)
+
+                # This is only for the test and coupled with read_pp_from_hdf5.
+                if check_consistency:
+                    w.create_dataset("pp", data=pp, compression=compression)
+                    w.create_dataset("g_zero", data=g_zero, compression=compression)
+
+        if verbose:
+            text = ""
+            text += "Ph-ph interaction strength in reciprocal space"
+            if grid_point is not None:
+                text += "at gp-%d " % grid_point
+            if sigma is not None:
+                if grid_point is not None:
+                    text += "and "
+                else:
+                    text += "at "
+                text += "sigma %s" % sigma
+                if sigma_cutoff is None:
+                    text += "\n"
+                else:
+                    text += "(%4.2f SD)\n" % sigma_cutoff
+                text += "were written into "
+            else:
+                text += "were written into "
+                text += "\n"
+            text += '"%s".' % full_filename
+            print(text)
+
+        return full_filename
+
+
 def read_pp_from_hdf5(
     mesh,
     grid_point=None,
